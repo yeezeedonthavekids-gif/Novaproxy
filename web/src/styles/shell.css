@@ -121,8 +121,8 @@
 
 /* Ghost quick navigation */
 .ghost-scrim { place-items: start center; padding-top: 14vh; }
-.ghost { width: min(560px, 100%); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-3); overflow: hidden; }
-:root:not([data-perf="efficiency"]) .ghost { animation: rise var(--dur-slow) var(--ease); }
+.ghost-panel { width: min(560px, 100%); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-3); overflow: hidden; }
+:root:not([data-perf="efficiency"]) .ghost-panel { animation: rise var(--dur-slow) var(--ease); }
 .ghost-input { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--border); color: var(--accent-text); }
 .ghost-input input { flex: 1; height: 100%; border: 0; outline: none; background: transparent; font-size: 16px; color: var(--text); }
 .ghost-list { padding: 6px; max-height: 50vh; overflow: auto; }

@@ -1,0 +1,25 @@
+.privacy-hero { padding: 18px; display: grid; gap: 16px; }
+.privacy-status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.privacy-orb { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--surface-3); color: var(--text-2); }
+.privacy-orb.online { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.privacy-orb.offline { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+.privacy-title { font-size: 17px; font-weight: 680; }
+.privacy-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.privacy-stats > div { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); }
+.privacy-stats .faint { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 650; }
+.facts { display: grid; }
+.fact { display: flex; gap: 14px; padding: 14px 18px; border-top: 1px solid var(--border); }
+.fact:first-child { border-top: 0; }
+.fact-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; }
+.fact.ok .fact-icon { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+.fact.warn .fact-icon { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+.fact.info .fact-icon { background: var(--accent-soft); color: var(--accent-text); }
+.fact-title { font-weight: 620; margin-bottom: 2px; }
+.link-row { text-align: left; white-space: nowrap; }
+.link-row:hover { color: var(--accent-text); }
+.link-row .faint { margin-left: 6px; font-size: 12px; }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.metric { display: grid; gap: 2px; padding: 14px 18px; border-top: 1px solid var(--border); border-right: 1px solid var(--border); margin: -1px -1px 0 0; }
+.metric strong { font-size: 17px; font-weight: 650; text-transform: none; font-variant-numeric: tabular-nums; }
+.metric .faint { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 650; }

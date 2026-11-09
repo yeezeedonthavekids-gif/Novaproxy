@@ -158,7 +158,7 @@ export default function Home({ clean }: PageProps & { clean?: boolean }) {
         <footer class="home-footer">
           <button class="chip" onClick={() => openPage("privacy")} title="Privacy dashboard">
             <span class={`dot ${st.state}`} />
-            {st.state === "online" ? "Private relay connected" : st.state === "offline" ? "Relay offline" : "Relay standby"}
+            {st.state === "online" ? "Relay connected" : st.state === "offline" ? "Relay offline" : "Relay standby"}
             {privateMode.value && " · Private session"}
           </button>
           <span class="spacer" />

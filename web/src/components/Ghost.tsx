@@ -34,7 +34,7 @@ export function Ghost() {
 
   return (
     <div class="modal-scrim ghost-scrim" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div class="ghost" role="dialog" aria-modal="true" aria-label="Ghost quick navigation">
+      <div class="ghost-panel" role="dialog" aria-modal="true" aria-label="Ghost quick navigation">
         <div class="ghost-input">
           <Icon name="ghost" size={20} />
           <input

@@ -1,0 +1,43 @@
+.games-page { padding-top: 28px; }
+.g-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+.g-hero h1 { margin: 4px 0 2px; font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -0.03em; font-weight: 760; }
+.g-hero p { margin: 0; }
+.g-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-text); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.g-search { display: flex; align-items: center; gap: 10px; width: min(380px, 100%); height: 42px; padding: 0 8px 0 14px; border-radius: 42px; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-3); }
+.g-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.g-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: var(--text); }
+.g-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.g-chips { display: flex; gap: 6px; flex: 1; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
+.g-chips::-webkit-scrollbar { display: none; }
+.g-sort { width: auto; flex: none; height: 32px; font-size: 12.5px; }
+.g-section { margin-top: 18px; }
+.g-section h2 { margin: 0 0 12px; font-size: 15px; font-weight: 680; }
+.g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
+.g-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 170px); gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+.g-card { position: relative; min-width: 0; }
+.g-card.skeleton { aspect-ratio: 1 / 1.28; border-radius: var(--radius); background: var(--surface); }
+:root:not([data-perf="efficiency"]) .g-card.skeleton { animation: pulse 1.4s var(--ease) infinite; }
+.g-card-main { display: grid; gap: 3px; width: 100%; text-align: left; }
+.g-cover-wrap { position: relative; aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 6px; }
+.g-cover { width: 100%; height: 100%; object-fit: cover; }
+:root[data-perf="visual"] .g-cover { transition: transform var(--dur-slow) var(--ease); }
+:root[data-perf="visual"] .g-card-main:hover .g-cover { transform: scale(1.04); }
+.g-cover-fallback { display: grid; place-items: center; font-size: 42px; font-weight: 750; color: var(--accent-text); background: var(--accent-softer); }
+.g-play { position: absolute; right: 10px; bottom: 10px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: var(--shadow-2); opacity: 0; transform: translateY(4px); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.g-card-main:hover .g-play, .g-card-main:focus-visible .g-play { opacity: 1; transform: none; }
+.g-name { font-weight: 600; font-size: 13.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.g-author { font-size: 12px; color: var(--text-3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.g-fav { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #0009; color: #fff; opacity: 0; transition: opacity var(--dur) var(--ease); }
+.g-card:hover .g-fav, .g-fav:focus-visible, .g-fav.on { opacity: 1; }
+.g-fav.on { color: #ff5d7a; }
+.g-sentinel { height: 1px; }
+.g-credits { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+.g-player { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; background: var(--bg); }
+.g-player-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.g-player-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.g-player-title strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-stage { position: relative; min-height: 0; background: #000; }
+.g-stage iframe { display: block; width: 100%; height: 100%; border: 0; background: #000; }
+.g-stage .empty { color: #ccc; height: 100%; }
+.g-note { margin: 0; padding: 6px 14px; background: var(--surface); border-top: 1px solid var(--border); }

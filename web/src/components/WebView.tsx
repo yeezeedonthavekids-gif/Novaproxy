@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { updateTab, newTab, navigate, type Tab } from "../state/tabs";
 import { settings } from "../state/settings";
 import { recordVisit, updateVisitTitle } from "../state/history";
+import { findByUrl, updateNode } from "../state/bookmarks";
 import { ENGINES, prepareEngine, decodeAny, ProxyUnavailableError } from "../proxy/index";
 import { checkWisp, softCheck, wispStatus } from "../proxy/wisp";
 import { attachShortcutsToFrame } from "../lib/shortcuts";
@@ -9,12 +10,20 @@ import { hostOf } from "../lib/url";
 import { ErrorPage } from "./ErrorPage";
 import { Icon } from "./Icon";
 
-const IFRAME_ALLOW = "fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture; gamepad; web-share";
+const IFRAME_ALLOW = "fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture; gamepad";
 
 /** Converts a same-origin (proxied) favicon into a tiny data URL so it survives reloads and needs no network later. */
-function captureFavicon(src: string): Promise<string> {
+function captureFavicon(src: string, win: Window): Promise<string> {
   return new Promise((resolve) => {
-    const img = new Image();
+    // The image must be requested from inside the proxied frame: only documents controlled by
+    // the engine's service worker get proxied subresources. The native src setter is used so the
+    // engine's own hooks don't encode the (already proxied) URL a second time.
+    let img: HTMLImageElement;
+    try {
+      img = win.document.createElement("img");
+    } catch {
+      return resolve("");
+    }
     img.decoding = "async";
     const timer = setTimeout(() => resolve(""), 4000);
     img.onload = () => {
@@ -32,7 +41,7 @@ function captureFavicon(src: string): Promise<string> {
       clearTimeout(timer);
       resolve("");
     };
-    img.src = src;
+    Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src")!.set!.call(img, src);
   });
 }
 
@@ -166,12 +175,24 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
       const iconEl = doc.querySelector<HTMLLinkElement>('link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
       const iconHref = iconEl?.href;
       idle(() => {
-        const src = iconHref || (settings.peek().performance.mode !== "efficiency" ? ENGINES[current.engine].encode(new URL("/favicon.ico", real).href) : "");
+        // Engines hook element getters, so iconHref may be the site's real URL. Always load the
+        // icon through the proxy: never contact the site directly, and keep it same-origin for the canvas.
+        let target = "";
+        try {
+          target = iconHref ? new URL(iconHref, real).href : settings.peek().performance.mode !== "efficiency" ? new URL("/favicon.ico", real).href : "";
+        } catch {
+          target = "";
+        }
+        const src = !target ? "" : target.startsWith(location.origin) ? target : /^https?:/.test(target) ? ENGINES[current.engine].encode(target) : target.startsWith("data:") ? target : "";
         if (!src) return;
-        void captureFavicon(src).then((data) => {
+        const frameWin = frame.current?.contentWindow;
+        if (!frameWin) return;
+        void captureFavicon(src, frameWin).then((data) => {
           if (!data || tabRef.current.url !== real) return;
           updateTab(current.id, { favicon: data });
           updateVisitTitle(real, title, data);
+          const bm = findByUrl(real);
+          if (bm && !bm.icon) updateNode(bm.id, { icon: data });
         });
       });
     }
@@ -196,7 +217,8 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
           (e) => {
             const a = (e.target as Element | null)?.closest?.("a[target]") as HTMLAnchorElement | null;
             if (!a || e.defaultPrevented || !["_blank", "_new"].includes(a.target.toLowerCase())) return;
-            const real = decodeAny(a.href);
+            // Engines hook a.href to return the site's real URL; older paths may return the proxied one.
+            const real = decodeAny(a.href) ?? (/^https?:/i.test(a.href) ? a.href : null);
             if (!real) return;
             e.preventDefault();
             newTab(real, { engine: tabRef.current.engine, background: e.ctrlKey || e.metaKey });
@@ -205,7 +227,11 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
         );
         const nativeOpen = win.open.bind(win);
         win.open = ((url?: string | URL, target?: string, features?: string) => {
-          const real = url ? decodeAny(new URL(String(url), win.location.href).href) : null;
+          let real: string | null = null;
+          if (url) {
+            const abs = new URL(String(url), decodeAny(win.location.href) ?? win.location.href).href;
+            real = decodeAny(abs) ?? (/^https?:/i.test(abs) ? abs : null);
+          }
           if (real && !features && target !== "_self") {
             newTab(real, { engine: tabRef.current.engine });
             return null;
