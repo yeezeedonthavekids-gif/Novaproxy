@@ -18,6 +18,13 @@ import { goToDestination } from "./ghost";
 
 export const ghostOpen = signal(false);
 export const focusAddressRequest = signal(0);
+/** Requested Settings section (e.g. "proxy"), consumed by the Settings page. */
+export const settingsSection = signal<string | null>(null);
+
+export function openSettings(section: string) {
+  settingsSection.value = section;
+  openPage("settings");
+}
 
 /** Opens an internal page: reuse a tab already showing it, else replace a blank home tab, else open a new tab. */
 export function openPage(page: InternalPage) {

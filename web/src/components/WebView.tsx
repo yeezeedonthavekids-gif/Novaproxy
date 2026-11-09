@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { updateTab, newTab, navigate, type Tab } from "../state/tabs";
+import { updateTab, newTab, navigate, sendCommand, type Tab } from "../state/tabs";
 import { settings } from "../state/settings";
 import { recordVisit, updateVisitTitle } from "../state/history";
 import { findByUrl, updateNode } from "../state/bookmarks";
@@ -117,6 +117,12 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
   }, [tab.command?.nonce]);
 
   useEffect(() => () => observer.current?.disconnect(), []);
+
+  // A tab that failed only because the Wisp server was unreachable retries by itself once it's back.
+  const wispOnline = wispStatus.value.state === "online";
+  useEffect(() => {
+    if (wispOnline && tab.error?.kind === "wisp" && !tab.discarded) sendCommand(tab.id, "reload");
+  }, [wispOnline, tab.error?.kind]);
 
   const syncFromFrame = (fromLoad: boolean) => {
     const iframe = frame.current;

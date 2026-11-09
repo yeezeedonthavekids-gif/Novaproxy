@@ -63,3 +63,6 @@ input[type="range"] { accent-color: var(--accent); width: 180px; }
 .progress span { display: block; height: 100%; background: var(--accent); }
 .link-row { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .link-row:hover { color: var(--accent-text); }
+.list-row.notice { background: var(--accent-softer); color: var(--text); align-items: flex-start; }
+.list-row.notice .icon { color: var(--accent-text); margin-top: 2px; }
+.list-row code { font: 12px var(--mono); padding: 1px 5px; border-radius: 5px; background: var(--surface-2); }

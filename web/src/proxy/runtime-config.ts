@@ -32,6 +32,30 @@ export function runtimeConfig(): Promise<RuntimeConfig> {
   return cached;
 }
 
+/** True when no Wisp server was configured, so NOVA is guessing "same origin". */
+export async function wispIsSameOriginGuess(): Promise<boolean> {
+  const cfg = await runtimeConfig();
+  return !cfg.wispUrl && !(import.meta.env.VITE_WISP_URL as string | undefined);
+}
+
+/**
+ * Checks whether this site actually runs the NOVA server. Static hosts (Netlify,
+ * Vercel, GitHub Pages, Cloudflare Pages) answer /health with the SPA's HTML or a 404.
+ */
+export async function sameOriginHasWispServer(): Promise<boolean> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch("/health", { cache: "no-store", signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) return false;
+    const data = (await res.json()) as { service?: string };
+    return data.service === "nova-wisp";
+  } catch {
+    return false;
+  }
+}
+
 /** Default Wisp endpoint: nova.config.json, then the build-time VITE_WISP_URL, then same origin. */
 export async function defaultWispUrl(): Promise<string> {
   const cfg = await runtimeConfig();

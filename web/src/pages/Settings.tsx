@@ -22,7 +22,7 @@ import { safeHttpUrl } from "../lib/url";
 import { normalizeWispUrl, defaultWispUrl } from "../proxy/runtime-config";
 import { probeWisp, wispStatus, checkWisp } from "../proxy/wisp";
 import { ENGINES } from "../proxy/index";
-import { openPage } from "../lib/actions";
+import { openPage, settingsSection } from "../lib/actions";
 import { Icon, type IconName } from "../components/Icon";
 import { Section, SettingRow, Switch, Segmented, toast, askForm, confirmAction, downloadText, pickFile, imageToIcon } from "../components/ui";
 import { ShortcutEditor, ShortcutList } from "./Shortcuts";
@@ -424,6 +424,15 @@ function ProxySettings() {
           </button>
         }
       >
+        {st.notConfigured && (
+          <div class="list-row notice">
+            <Icon name="info" size={16} />
+            <span class="list-row-label" style={{ whiteSpace: "normal" }}>
+              <strong>This site has no Wisp server.</strong> Static hosts (Netlify, Vercel, Cloudflare Pages, GitHub Pages) can't run one. Deploy the NOVA server on Docker, Render or a VPS and add
+              its <code>wss://…/wisp/</code> address below.
+            </span>
+          </div>
+        )}
         <div class="list-row">
           <span class={`dot ${st.state}`} />
           <span class="list-row-label">
@@ -746,7 +755,14 @@ function DataSettings() {
 }
 
 export default function SettingsPage(_props: PageProps) {
-  const [section, setSection] = useState("appearance");
+  const [section, setSection] = useState(() => settingsSection.peek() ?? "appearance");
+  // Jump to a section requested from elsewhere (e.g. "Add a Wisp server" on the error page).
+  useEffect(() => {
+    if (settingsSection.value) {
+      setSection(settingsSection.value);
+      settingsSection.value = null;
+    }
+  }, [settingsSection.value]);
   return (
     <div class="page settings-page">
       <div class="settings-layout">

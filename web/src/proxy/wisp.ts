@@ -13,7 +13,7 @@
  */
 import { signal, effect } from "@preact/signals";
 import { settings } from "../state/settings";
-import { defaultWispUrl, normalizeWispUrl } from "./runtime-config";
+import { defaultWispUrl, normalizeWispUrl, sameOriginHasWispServer, wispIsSameOriginGuess } from "./runtime-config";
 
 export type WispState = "unknown" | "checking" | "online" | "offline";
 
@@ -26,6 +26,8 @@ export interface WispStatus {
   failures: number;
   nextRetryAt: number | null;
   candidates: string[];
+  /** No Wisp server is configured and this site (e.g. a static host) doesn't run one. */
+  notConfigured: boolean;
 }
 
 export const wispStatus = signal<WispStatus>({
@@ -37,6 +39,7 @@ export const wispStatus = signal<WispStatus>({
   failures: 0,
   nextRetryAt: null,
   candidates: [],
+  notConfigured: false,
 });
 
 export interface ProbeResult {
@@ -127,11 +130,17 @@ export function checkWisp(): Promise<WispStatus> {
           failures: 0,
           nextRetryAt: null,
           candidates: list,
+          notConfigured: false,
         };
         if (recovered) listeners.forEach((fn) => fn(url));
         return wispStatus.peek();
       }
       errors.push(list.length > 1 ? `${new URL(url).host}: ${result.error}` : result.error);
+    }
+    // Nothing configured and the guessed same-origin server doesn't exist: say so plainly
+    // instead of retrying forever against a static host.
+    if (!settings.peek().proxy.wispServers.length && (await wispIsSameOriginGuess()) && !(await sameOriginHasWispServer())) {
+      return setOffline(list, NOT_CONFIGURED_MESSAGE, true);
     }
     return setOffline(list, errors.join(" · "));
   })().finally(() => {
@@ -140,11 +149,14 @@ export function checkWisp(): Promise<WispStatus> {
   return inflight;
 }
 
-function setOffline(list: string[], error: string): WispStatus {
+export const NOT_CONFIGURED_MESSAGE =
+  "This site doesn't run a Wisp server. Static hosts like Netlify, Vercel, Cloudflare Pages and GitHub Pages can't; host the NOVA server elsewhere (Docker, Render, a VPS) and add its address.";
+
+function setOffline(list: string[], error: string, notConfigured = false): WispStatus {
   const prev = wispStatus.peek();
   const failures = prev.failures + 1;
-  // 2s, 4s, 8s ... capped at 60s
-  const delay = Math.min(60_000, 2000 * 2 ** Math.min(failures - 1, 5));
+  // 2s, 4s, 8s ... capped at 60s. Without a configured server, retrying fast is pointless.
+  const delay = notConfigured ? 120_000 : Math.min(60_000, 2000 * 2 ** Math.min(failures - 1, 5));
   wispStatus.value = {
     state: "offline",
     url: prev.url || list[0] || "",
@@ -154,6 +166,7 @@ function setOffline(list: string[], error: string): WispStatus {
     failures,
     nextRetryAt: Date.now() + delay,
     candidates: list,
+    notConfigured,
   };
   if (retryTimer) clearTimeout(retryTimer);
   retryTimer = setTimeout(() => {
