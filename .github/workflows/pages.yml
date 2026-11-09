@@ -1,0 +1,46 @@
+# Deploys the NOVA frontend to GitHub Pages.
+# Set the repository variable NOVA_WISP_URL (Settings -> Secrets and variables ->
+# Actions -> Variables) to your Wisp server, e.g. wss://nova.onrender.com/wisp/
+# Then enable Pages with source "GitHub Actions".
+name: Deploy frontend to GitHub Pages
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_WISP_URL: ${{ vars.NOVA_WISP_URL }}
+        run: npm run build -w web && cp web/dist/index.html web/dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,10 @@
+# One-click deploy on Render (https://render.com): New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: nova
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: LOG_LEVEL
+        value: info

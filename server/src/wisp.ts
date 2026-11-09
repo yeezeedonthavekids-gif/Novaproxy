@@ -16,6 +16,7 @@
  */
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
+import { BlockList, isIP } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { server as wisp, logging as wispLogging } from "@mercuryworkshop/wisp-js/server";
 import type { NovaConfig } from "./config.js";
@@ -59,9 +60,27 @@ function rejectUpgrade(socket: Duplex, status: number, reason: string) {
   );
 }
 
-export function resolveClientIp(req: IncomingMessage, trustedProxies: string[]): string {
+/** Builds a matcher for trusted proxy entries: exact IPs, CIDR ranges, or "*". */
+export function createTrustMatcher(entries: string[]): (ip: string) => boolean {
+  if (entries.includes("*")) return () => true;
+  const list = new BlockList();
+  for (const entry of entries) {
+    const [addr, bits] = entry.split("/");
+    const type = isIP(addr ?? "") === 6 ? "ipv6" : "ipv4";
+    if (!isIP(addr ?? "")) continue;
+    if (bits !== undefined) list.addSubnet(addr!, Number(bits), type);
+    else list.addAddress(addr!, type);
+  }
+  return (ip: string) => {
+    const plain = ip.startsWith("::ffff:") && isIP(ip.slice(7)) === 4 ? ip.slice(7) : ip;
+    const type = isIP(plain);
+    return type !== 0 && list.check(plain, type === 6 ? "ipv6" : "ipv4");
+  };
+}
+
+export function resolveClientIp(req: IncomingMessage, isTrusted: (ip: string) => boolean): string {
   const remote = req.socket.remoteAddress ?? "unknown";
-  if (!trustedProxies.includes(remote)) return remote;
+  if (!isTrusted(remote)) return remote;
   const forwarded = req.headers["x-forwarded-for"];
   const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
   if (first) return first;
@@ -77,6 +96,7 @@ export class WispGateway {
   private readonly heartbeat: NodeJS.Timeout;
   private readonly rateSweep: NodeJS.Timeout;
   private draining = false;
+  private readonly isTrusted: (ip: string) => boolean;
   private totalConnections = 0;
   private rejectedConnections = 0;
   private terminatedDeadPeers = 0;
@@ -86,6 +106,7 @@ export class WispGateway {
     private readonly log: Logger,
   ) {
     this.applyWispOptions();
+    this.isTrusted = createTrustMatcher(config.trustedProxies);
     this.wss = new WebSocketServer({
       noServer: true,
       maxPayload: config.maxPayloadBytes,
@@ -138,7 +159,7 @@ export class WispGateway {
     if (pathname !== this.config.wispPath && pathname + "/" !== this.config.wispPath) return false;
 
     socket.on("error", () => socket.destroy());
-    const ip = resolveClientIp(req, this.config.trustedProxies);
+    const ip = resolveClientIp(req, this.isTrusted);
     const reject = (status: number, reason: string) => {
       this.rejectedConnections++;
       this.log.debug("rejected wisp connection", { status, reason });

@@ -1,0 +1,5 @@
+# Caddy terminates HTTPS automatically and proxies WebSockets out of the box.
+nova.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}

@@ -36,7 +36,7 @@ export interface NovaConfig {
   dnsMethod: "lookup" | "resolve";
   dnsServers: string[];
   dnsResultOrder: "ipv4first" | "ipv6first" | "verbatim";
-  /** IPs (reverse proxies) whose X-Forwarded-For header is trusted. */
+  /** IPs or CIDR ranges of reverse proxies whose X-Forwarded-For header is trusted ("*" = any). */
   trustedProxies: string[];
   /** Seconds between WebSocket pings. Dead peers are dropped after two missed pongs. */
   heartbeatSeconds: number;
@@ -145,9 +145,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): NovaConfig {
     dnsMethod: oneOf(env, "DNS_METHOD", ["lookup", "resolve"] as const, "lookup"),
     dnsServers: list(env, "DNS_SERVERS"),
     dnsResultOrder: oneOf(env, "DNS_RESULT_ORDER", ["ipv4first", "ipv6first", "verbatim"] as const, "ipv4first"),
+    // Load balancers on PaaS hosts (Render, Fly, Railway...) connect from private
+    // addresses that change, so private ranges are trusted by default. A client
+    // connecting directly from the internet has a public address and can't spoof this.
     trustedProxies: list(env, "TRUSTED_PROXIES").length
       ? list(env, "TRUSTED_PROXIES")
-      : ["127.0.0.1", "::1", "::ffff:127.0.0.1"],
+      : ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "fc00::/7"],
     heartbeatSeconds: int(env, "HEARTBEAT_SECONDS", 25, 5, 3600),
     shutdownGraceSeconds: int(env, "SHUTDOWN_GRACE_SECONDS", 10, 0, 600),
     maxPayloadBytes: int(env, "MAX_PAYLOAD_BYTES", 1024 * 1024, 1024, 64 * 1024 * 1024),

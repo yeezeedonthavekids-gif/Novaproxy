@@ -182,6 +182,14 @@ describe("security defaults", () => {
     conn.close();
   });
 
+  test("cloud metadata, private and mapped addresses are blocked", async () => {
+    const conn = await openWisp(url);
+    for (const host of ["169.254.169.254", "10.0.0.1", "192.168.1.1", "::ffff:127.0.0.1", "0.0.0.0"]) {
+      assert.equal(await streamCloseReason(conn, host, 80), 0x48, `${host} must be blocked`);
+    }
+    conn.close();
+  });
+
   test("hostname resolving to loopback is blocked too", async () => {
     const conn = await openWisp(url);
     const reason = await streamCloseReason(conn, "localhost", echo.address().port);
@@ -296,5 +304,33 @@ describe("static hosting", () => {
   test("service worker is never cached", async () => {
     const res = await getJson(running.port, "/sw.js");
     assert.equal(res.headers["cache-control"], "no-cache");
+  });
+});
+
+describe("client IP resolution", () => {
+  test("trusted proxy matcher supports IPs, CIDR and mapped IPv4", async () => {
+    const { createTrustMatcher } = await import("../dist/wisp.js");
+    const m = createTrustMatcher(["10.0.0.0/8", "127.0.0.1", "fc00::/7"]);
+    assert.equal(m("10.20.30.40"), true);
+    assert.equal(m("::ffff:10.1.2.3"), true);
+    assert.equal(m("127.0.0.1"), true);
+    assert.equal(m("fd12::1"), true);
+    assert.equal(m("8.8.8.8"), false);
+    assert.equal(m("unknown"), false);
+    assert.equal(createTrustMatcher(["*"])("8.8.8.8"), true);
+  });
+
+  test("per-IP limits use X-Forwarded-For from a trusted proxy", async () => {
+    const running = await startServer(makeConfig({ MAX_CONNECTIONS_PER_IP: "1" }), silent);
+    try {
+      // Two different users behind the same (loopback = trusted) load balancer.
+      const a = new WebSocket(`ws://127.0.0.1:${running.port}/wisp/`, { headers: { "X-Forwarded-For": "203.0.113.1" } });
+      await new Promise((r) => a.on("open", r));
+      assert.equal(await rawUpgradeStatus(running.port, { "X-Forwarded-For": "203.0.113.2" }), 101);
+      assert.equal(await rawUpgradeStatus(running.port, { "X-Forwarded-For": "203.0.113.1" }), 429);
+      a.close();
+    } finally {
+      await running.close();
+    }
   });
 });

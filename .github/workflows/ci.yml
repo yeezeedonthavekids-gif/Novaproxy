@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Server tests (real Wisp connections)
+        run: npm test -w server
+      - name: Install Playwright Chromium
+        run: npx -y playwright@1 install --with-deps chromium && npm i --no-save playwright@1
+      - name: End-to-end tests (both proxy engines)
+        run: npm test -w web

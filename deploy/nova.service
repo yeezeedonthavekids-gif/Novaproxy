@@ -1,0 +1,28 @@
+# systemd unit for a VPS install.
+#   sudo cp deploy/nova.service /etc/systemd/system/ && sudo systemctl enable --now nova
+[Unit]
+Description=NOVA web proxy and Wisp server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nova
+WorkingDirectory=/opt/nova
+EnvironmentFile=-/opt/nova/.env
+Environment=NODE_ENV=production STATIC_DIR=/opt/nova/web/dist PORT=8080 HOST=127.0.0.1
+ExecStart=/usr/bin/node server/dist/index.js
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGTERM
+LimitNOFILE=65536
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/nova
+
+[Install]
+WantedBy=multi-user.target

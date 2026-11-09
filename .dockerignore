@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+docs
+*.log
+.env
+web/public/uv/vendor
+web/public/scram/vendor
+web/public/baremux
+web/public/transports
+test-results

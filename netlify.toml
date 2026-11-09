@@ -1,0 +1,8 @@
+# Netlify hosts the frontend only. Point it at a Wisp server with VITE_WISP_URL
+# (build env var) or by editing web/public/nova.config.json.
+[build]
+  command = "npm run build -w web"
+  publish = "web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
