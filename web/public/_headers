@@ -1,0 +1,14 @@
+# Netlify / Cloudflare Pages headers
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+/uv/sw.js
+  Cache-Control: no-cache
+/scram/sw.js
+  Cache-Control: no-cache
+/uv/uv.config.js
+  Cache-Control: no-cache
+/nova.config.json
+  Cache-Control: no-cache
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

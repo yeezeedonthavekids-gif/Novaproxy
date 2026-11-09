@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+web/public/uv/vendor/
+web/public/scram/vendor/
+web/public/baremux/
+web/public/transports/
+test-results/
+playwright-report/
+.DS_Store

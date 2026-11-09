@@ -1,0 +1,36 @@
+/* Shared layout for NOVA's internal pages */
+.page { position: relative; min-height: 100%; padding: 32px clamp(16px, 4vw, 48px) 64px; }
+.page-narrow { max-width: 920px; margin: 0 auto; }
+.page-wide { max-width: 1280px; margin: 0 auto; }
+.page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.page-head h1 { margin: 0; font-size: clamp(22px, 3vw, 30px); letter-spacing: -0.02em; font-weight: 720; }
+.page-head p { margin: 4px 0 0; color: var(--text-2); }
+.page-loading { display: grid; place-items: center; height: 100%; min-height: 240px; }
+
+.section { margin-top: 28px; }
+.section-head { display: flex; align-items: flex-end; gap: 12px; justify-content: space-between; margin-bottom: 12px; }
+.section-head h2 { margin: 0; font-size: 15px; font-weight: 680; letter-spacing: -0.005em; }
+.section-head .hint { margin: 3px 0 0; }
+.section-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+:root[data-glass="true"] .section-body { background: color-mix(in srgb, var(--surface) 78%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.setting-row { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--border); }
+.setting-row:first-child { border-top: 0; }
+.setting-text { flex: 1; min-width: 0; }
+.setting-title { font-weight: 580; }
+.setting-control { flex: none; display: flex; align-items: center; gap: 8px; max-width: 60%; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .setting-row { flex-direction: column; align-items: stretch; }
+  .setting-control { max-width: none; justify-content: flex-start; }
+}
+
+.empty { display: grid; place-items: center; gap: 8px; padding: 48px 16px; text-align: center; color: var(--text-2); }
+.empty .icon { color: var(--text-3); }
+
+/* Error page */
+.error-page { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 24px; background: var(--bg); overflow: auto; }
+.error-card { max-width: 560px; text-align: center; }
+.error-card h1 { margin: 16px 0 8px; font-size: 22px; letter-spacing: -0.015em; }
+.error-card p { line-height: 1.6; }
+.error-icon { width: 60px; height: 60px; margin: 0 auto; border-radius: 18px; display: grid; place-items: center; background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+.error-icon.wisp { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.error-detail { margin: 14px auto 0; max-width: 100%; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font: 12px/1.5 var(--mono); text-align: left; white-space: pre-wrap; word-break: break-word; }

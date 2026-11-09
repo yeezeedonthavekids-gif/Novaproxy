@@ -1,0 +1,28 @@
+{
+  "name": "@nova/server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NOVA's self-hosted Wisp server (WebSocket TCP/UDP multiplexer) with optional static hosting for the NOVA frontend.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsc -p tsconfig.json && node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@mercuryworkshop/wisp-js": "0.5.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "~5.7.2"
+  }
+}

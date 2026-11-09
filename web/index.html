@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-perf="balanced">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0d14" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="NOVA - a lightweight, private, customizable browser environment." />
+    <link rel="icon" id="nova-favicon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>NOVA</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+      try {
+        var s = JSON.parse(localStorage.getItem("nova:settings") || "{}");
+        var a = s.appearance || {};
+        var t = a.theme || "dark";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = t;
+        document.documentElement.dataset.perf = (s.performance && s.performance.mode) || "balanced";
+        if (a.accent) document.documentElement.style.setProperty("--accent", a.accent);
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>NOVA needs JavaScript to run.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
