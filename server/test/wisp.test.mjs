@@ -83,6 +83,14 @@ function rawUpgradeStatus(port, headers = {}) {
   });
 }
 
+function closeCode(url, headers = {}) {
+  return new Promise((resolve) => {
+    const ws = new WebSocket(url, { headers });
+    ws.on("close", (code) => resolve(code));
+    ws.on("error", () => {});
+  });
+}
+
 function getJson(port, p) {
   return new Promise((resolve, reject) => {
     http
@@ -202,7 +210,7 @@ describe("limits", () => {
   test("origin allow-list", async () => {
     const running = await startServer(makeConfig({ ALLOWED_ORIGINS: "https://nova.example" }), silent);
     try {
-      assert.equal(await rawUpgradeStatus(running.port, { Origin: "https://evil.example" }), 403);
+      assert.equal(await closeCode(`ws://127.0.0.1:${running.port}/wisp/`, { Origin: "https://evil.example" }), 4003);
       assert.equal(await rawUpgradeStatus(running.port, { Origin: "https://nova.example/" }), 101);
     } finally {
       await running.close();
@@ -354,3 +362,4 @@ describe("configuration", () => {
     }
   });
 });
+

@@ -7,7 +7,7 @@ import { history, clearHistory } from "../state/history";
 import { allLinks } from "../state/bookmarks";
 import { gamePrefs } from "../state/games";
 import { notes } from "../state/notes";
-import { wispStatus, checkWisp } from "../proxy/wisp";
+import { wispStatus, checkWisp, wispLabel } from "../proxy/wisp";
 import { ENGINES, engineState, transportState } from "../proxy/index";
 import { clearProxiedSiteData, storageEstimate, formatBytes } from "../lib/sitedata";
 import { PREFIX, remove } from "../lib/storage";
@@ -49,13 +49,7 @@ export default function PrivacyPage(_props: PageProps) {
   };
   useEffect(refresh, []);
 
-  const host = (() => {
-    try {
-      return new URL(st.url || st.candidates[0] || location.href).host;
-    } catch {
-      return "—";
-    }
-  })();
+  const host = wispLabel(st.url || st.candidates[0] || "");
   const webTabs = tabs.value.filter((t) => !isInternal(t.url));
 
   return (
@@ -76,7 +70,7 @@ export default function PrivacyPage(_props: PageProps) {
             <div>
               <div class="privacy-title">{st.state === "online" ? "Relay connected" : st.state === "offline" ? "Relay unreachable" : st.state === "checking" ? "Checking relay…" : "Relay not used yet"}</div>
               <div class="hint">
-                Wisp server <span class="mono">{host}</span>
+                Wisp server: <span>{host}</span>
                 {st.latency != null && ` · ${st.latency} ms handshake`}
                 {st.state === "offline" && ` · ${st.error}`}
               </div>

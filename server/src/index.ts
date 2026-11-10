@@ -46,6 +46,8 @@ async function main() {
   }
   if (config.allowedOrigins.length === 0) {
     log.info("ALLOWED_ORIGINS is not set: any website may use this Wisp server");
+  } else {
+    log.info("Wisp server is limited to these sites", { origins: config.allowedOrigins });
   }
 
   let stopping = false;

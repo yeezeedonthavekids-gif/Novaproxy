@@ -20,7 +20,7 @@ import { mediaStore } from "../lib/idb";
 import { uid } from "../lib/storage";
 import { safeHttpUrl } from "../lib/url";
 import { normalizeWispUrl, defaultWispUrl } from "../proxy/runtime-config";
-import { probeWisp, wispStatus, checkWisp } from "../proxy/wisp";
+import { probeWisp, wispStatus, checkWisp, wispLabel } from "../proxy/wisp";
 import { ENGINES } from "../proxy/index";
 import { openPage, settingsSection } from "../lib/actions";
 import { Icon, type IconName } from "../components/Icon";
@@ -437,7 +437,7 @@ function ProxySettings() {
           <span class={`dot ${st.state}`} />
           <span class="list-row-label">
             <strong>{st.state === "online" ? "Connected" : st.state === "offline" ? "Unreachable" : st.state === "checking" ? "Checking…" : "Idle"}</strong>
-            <span class="mono faint" style={{ marginLeft: 8 }}>{st.url}</span>
+            <span class="faint" style={{ marginLeft: 8 }}>{wispLabel(st.url)}</span>
           </span>
           {st.latency != null && <span class="badge ok">{st.latency} ms</span>}
         </div>
@@ -445,7 +445,7 @@ function ProxySettings() {
           <div class="list-row">
             <Icon name="cloud" size={16} />
             <span class="list-row-label">
-              Deployment default <span class="mono faint">{fallback}</span>
+              Built-in relay <span class="faint">(provided by this site)</span>
             </span>
             <button class="btn sm" disabled={testing === fallback} onClick={() => void test(fallback)}>
               Test
@@ -469,7 +469,7 @@ function ProxySettings() {
         ))}
         {Object.entries(results).map(([url, r]) => (
           <div class="list-row hint" key={url}>
-            <span class="mono">{url}</span> <span class={r.startsWith("✓") ? "" : "error-text"}>{r}</span>
+            <span class="mono">{wispLabel(url)}</span> <span class={r.startsWith("✓") ? "" : "error-text"}>{r}</span>
           </div>
         ))}
         <form

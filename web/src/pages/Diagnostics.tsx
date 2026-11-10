@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { PageProps } from "../components/Content";
 import { settings } from "../state/settings";
 import { tabs } from "../state/tabs";
-import { wispStatus, probeWisp, checkWisp } from "../proxy/wisp";
+import { wispStatus, probeWisp, checkWisp, wispLabel } from "../proxy/wisp";
 import { ENGINES, engineState, transportState, isServiceWorkerSupported } from "../proxy/index";
 import { loadedModules } from "../proxy/modules";
 import { formatBytes } from "../lib/sitedata";
@@ -127,7 +127,7 @@ export default function DiagnosticsPage({ active }: PageProps) {
             <Metric label="Status" value={{ unknown: "Idle", checking: "Checking", online: "Online", offline: "Offline" }[st.state]} note={st.state === "offline" ? st.error : undefined} />
             <Metric label="Handshake latency" value={ms(st.latency ?? undefined)} note="Time to complete a real Wisp handshake" />
             <Metric label="Last checked" value={st.checkedAt ? new Date(st.checkedAt).toLocaleTimeString() : "—"} note={st.failures ? `${st.failures} failed attempt(s), retrying with backoff` : undefined} />
-            <Metric label="Server" value={st.url ? new URL(st.url).host : "—"} note={st.candidates.length > 1 ? `${st.candidates.length} servers configured (failover)` : undefined} />
+            <Metric label="Server" value={wispLabel(st.url)} note={st.candidates.length > 1 ? `${st.candidates.length} servers configured (failover)` : undefined} />
           </div>
           <div class="list-row">
             <button class="btn sm" onClick={() => void runBench()}>

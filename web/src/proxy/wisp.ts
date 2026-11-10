@@ -84,14 +84,33 @@ export function probeWisp(url: string, timeoutMs = 8000): Promise<ProbeResult> {
       else finish(false, "Unexpected handshake: this does not look like a Wisp server");
     };
     ws.onerror = () => finish(false, "Could not reach the Wisp server");
-    ws.onclose = (event) =>
+    ws.onclose = (event) => {
+      if (event.code === 4003) {
+        return finish(false, `The server refused this website (${location.origin}). Add it to ALLOWED_ORIGINS on the server.`);
+      }
       finish(false, event.code === 1006 ? "Connection refused, blocked, or the server is down" : `Connection closed (${event.code}${event.reason ? `: ${event.reason}` : ""})`);
+    };
   });
+}
+
+/** The relay built into this deployment (shown as "Built-in relay", never by address). */
+export const builtInWispUrl = signal("");
+
+/** What the UI shows for a Wisp server: the deployment's own relay is never displayed by address. */
+export function wispLabel(url: string): string {
+  if (!url) return "—";
+  if (url === builtInWispUrl.value) return "Built-in relay";
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
 }
 
 async function candidates(): Promise<string[]> {
   const custom = settings.peek().proxy.wispServers.map(normalizeWispUrl).filter(Boolean);
   const fallback = await defaultWispUrl();
+  if (builtInWispUrl.peek() !== fallback) builtInWispUrl.value = fallback;
   return [...new Set(custom.length ? custom : [fallback])];
 }
 
@@ -135,7 +154,7 @@ export function checkWisp(): Promise<WispStatus> {
         if (recovered) listeners.forEach((fn) => fn(url));
         return wispStatus.peek();
       }
-      errors.push(list.length > 1 ? `${new URL(url).host}: ${result.error}` : result.error);
+      errors.push(list.length > 1 ? `${wispLabel(url)}: ${result.error}` : result.error);
     }
     // Nothing configured and the guessed same-origin server doesn't exist: say so plainly
     // instead of retrying forever against a static host.

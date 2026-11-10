@@ -6,7 +6,7 @@ import { findByUrl, allLinks } from "../state/bookmarks";
 import { history } from "../state/history";
 import { downloads } from "../state/downloads";
 import { privateMode } from "../state/session";
-import { wispStatus, checkWisp } from "../proxy/wisp";
+import { wispStatus, checkWisp, wispLabel } from "../proxy/wisp";
 import { ENGINES, prepareEngine } from "../proxy/index";
 import { displayUrl, internalPage, isInternal, resolveInput, searchUrl, INTERNAL_PAGES } from "../lib/url";
 import { ACTIONS, focusAddressRequest, ghostOpen, openPage, toggleBookmark } from "../lib/actions";
@@ -269,7 +269,7 @@ function StatusButton() {
               <span class={`dot ${st.state}`} />
               <strong>{st.state === "online" ? "Connected to Wisp server" : st.state === "offline" ? "Wisp server unreachable" : st.state === "checking" ? "Checking connection…" : "Not checked yet"}</strong>
             </div>
-            <div class="mono faint" style={{ marginTop: 6, wordBreak: "break-all" }}>{st.url || st.candidates[0] || "—"}</div>
+            <div class="faint" style={{ marginTop: 6, wordBreak: "break-all" }}>{wispLabel(st.url || st.candidates[0] || "")}</div>
             {st.state === "online" && <div class="hint" style={{ marginTop: 6 }}>Handshake latency {st.latency} ms · checked {new Date(st.checkedAt).toLocaleTimeString()}</div>}
             {st.state === "offline" && (
               <>

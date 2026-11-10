@@ -78,6 +78,9 @@ export function createTrustMatcher(entries: string[]): (ip: string) => boolean {
   };
 }
 
+/** WebSocket close code NOVA's client understands (4000-4999 is the application range). */
+export const CLOSE_ORIGIN_NOT_ALLOWED = 4003;
+
 export function resolveClientIp(req: IncomingMessage, isTrusted: (ip: string) => boolean): string {
   const remote = req.socket.remoteAddress ?? "unknown";
   if (!isTrusted(remote)) return remote;
@@ -168,12 +171,18 @@ export class WispGateway {
     };
 
     if (this.draining) return reject(503, "server is restarting");
-
-    if (this.config.allowedOrigins.length) {
-      const origin = (req.headers.origin ?? "").replace(/\/$/, "").toLowerCase();
-      if (!this.config.allowedOrigins.includes(origin)) return reject(403, "origin not allowed");
-    }
     if (!this.consumeRate(ip)) return reject(429, "too many new connections, slow down");
+
+    // Authorization failures complete the WebSocket handshake and then close with an
+    // application code. Browsers can't read HTTP status codes on failed WebSocket
+    // upgrades, and some reverse proxies (e.g. Tailscale Funnel) stall on them, so a
+    // close code is the only way to tell the user *why* they were refused.
+    const origin = (req.headers.origin ?? "").replace(/\/$/, "").toLowerCase();
+    if (this.config.allowedOrigins.length && !this.config.allowedOrigins.includes(origin)) {
+      this.log.warn("refused a site that isn't in ALLOWED_ORIGINS", { origin: origin || "(none)" });
+      return this.refuse(req, socket, head, CLOSE_ORIGIN_NOT_ALLOWED, "This site is not allowed to use this server");
+    }
+
     if (this.clients.size >= this.config.maxConnections) return reject(503, "server is at capacity");
     if ((this.perIp.get(ip) ?? 0) >= this.config.maxConnectionsPerIp) {
       return reject(429, "too many open connections from this address");
@@ -187,6 +196,16 @@ export class WispGateway {
     this.wss.handleUpgrade(req, socket, head, (ws) => {
       const wispVersion = req.headers["sec-websocket-protocol"] ? 2 : 1;
       void this.attach(ws, ip, wispVersion);
+    });
+    return true;
+  }
+
+  private refuse(req: IncomingMessage, socket: Duplex, head: Buffer, code: number, reason: string): true {
+    this.rejectedConnections++;
+    this.wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.close(code, reason);
+      // Don't let a refused client hold the socket open.
+      setTimeout(() => ws.terminate(), 2000).unref();
     });
     return true;
   }
