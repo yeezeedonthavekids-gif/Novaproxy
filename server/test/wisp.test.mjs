@@ -334,3 +334,23 @@ describe("client IP resolution", () => {
     }
   });
 });
+
+describe("configuration", () => {
+  test("relative STATIC_DIR resolves against the repo root when started via npm workspaces", async () => {
+    const path = await import("node:path");
+    const root = path.resolve(new URL(".", import.meta.url).pathname, "../..");
+    const { mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+    const dir = path.join(root, "web", "dist-test-fixture");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, "index.html"), "<title>x</title>");
+    try {
+      // Simulates `npm start` at the root: cwd is server/, INIT_CWD is the root.
+      const cfg = loadConfig({ STATIC_DIR: "web/dist-test-fixture", INIT_CWD: root });
+      assert.equal(cfg.staticDir, dir);
+      const cfg2 = loadConfig({ STATIC_DIR: "web/dist-test-fixture" });
+      assert.equal(cfg2.staticDir, dir, "falls back to the repository root");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 /**
  * Environment-driven configuration for the NOVA server.
  *
@@ -118,6 +121,18 @@ function oneOf<T extends string>(env: NodeJS.ProcessEnv, key: string, allowed: r
   return value;
 }
 
+/**
+ * Resolves a relative STATIC_DIR. `npm start` at the repo root runs the server
+ * from inside server/, so "web/dist" must be tried against the directory npm
+ * was invoked from (INIT_CWD) and the repository root, not only the cwd.
+ */
+function resolveStaticDir(dir: string, env: NodeJS.ProcessEnv): string {
+  if (path.isAbsolute(dir)) return dir;
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const candidates = [env.INIT_CWD, process.cwd(), repoRoot].filter(Boolean).map((base) => path.resolve(base!, dir));
+  return candidates.find((c) => existsSync(path.join(c, "index.html"))) ?? candidates[0]!;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): NovaConfig {
   const staticDir = str(env, "STATIC_DIR", "");
   const motd = str(env, "WISP_MOTD", "");
@@ -125,7 +140,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): NovaConfig {
     host: str(env, "HOST", "0.0.0.0"),
     port: int(env, "PORT", 8080, 0, 65535),
     wispPath: normalizePath(str(env, "WISP_PATH", "/wisp/")),
-    staticDir: staticDir || null,
+    staticDir: staticDir ? resolveStaticDir(staticDir, env) : null,
     logLevel: oneOf(env, "LOG_LEVEL", ["debug", "info", "warn", "error", "silent"] as const, "info"),
     logFormat: oneOf(env, "LOG_FORMAT", ["pretty", "json"] as const, "pretty"),
     allowedOrigins: list(env, "ALLOWED_ORIGINS").map((o) => o.replace(/\/$/, "").toLowerCase()),

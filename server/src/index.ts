@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { loadConfig, ConfigError } from "./config.js";
 import { createLogger } from "./log.js";
 import { startServer, VERSION } from "./app.js";
@@ -39,6 +41,9 @@ async function main() {
     wisp: config.wispPath,
     static: config.staticDir ?? "disabled (wisp-only mode)",
   });
+  if (config.staticDir && !existsSync(path.join(config.staticDir, "index.html"))) {
+    log.warn(`STATIC_DIR has no index.html: ${config.staticDir}. Run "npm run build" first, or check the path.`);
+  }
   if (config.allowedOrigins.length === 0) {
     log.info("ALLOWED_ORIGINS is not set: any website may use this Wisp server");
   }
