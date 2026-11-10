@@ -18,17 +18,23 @@ say() { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
 
 # Never stop to ask questions (iptables-persistent otherwise waits on a hidden prompt).
 export DEBIAN_FRONTEND=noninteractive
-echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
-echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
+
+# Fresh servers run automatic updates at first boot and hold the package lock.
+# Wait for them (up to 20 minutes) instead of failing.
+say "Checking for the server's automatic updates"
+for _ in $(seq 1 240); do
+  if pgrep -f "unattended-upgrade|apt.systemd.daily" >/dev/null || pgrep -x apt-get >/dev/null || pgrep -x dpkg >/dev/null; then
+    echo "  waiting for automatic updates to finish (this is normal on a new server)..."
+    sleep 5
+  else
+    break
+  fi
+done
 
 say "Installing Docker and git (this can take a few minutes)"
 dpkg --configure -a || true
-# Fresh servers often run automatic updates at first boot; wait for them instead of failing.
-for _ in $(seq 1 60); do
-  fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break
-  echo "  waiting for the server's automatic updates to finish..."
-  sleep 5
-done
+echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
+echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
 apt-get update -y
 apt-get install -y -o Dpkg::Options::=--force-confold git curl ca-certificates iptables-persistent \
   || apt-get install -y git curl ca-certificates
@@ -38,9 +44,11 @@ fi
 systemctl enable --now docker
 
 say "Opening ports 80 and 443 in the VM firewall"
-# Oracle's Ubuntu images ship iptables rules that reject everything except SSH.
+# Oracle's Ubuntu images ship iptables rules that reject everything except SSH;
+# other providers (IONOS, Hetzner...) usually have none. Inserting at the top
+# works in both cases.
 for port in 80 443; do
-  iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 6 -p tcp --dport "$port" -j ACCEPT
+  iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
 done
 if command -v netfilter-persistent >/dev/null; then netfilter-persistent save >/dev/null; fi
 
