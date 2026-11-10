@@ -1,0 +1,6 @@
+# Caddy gets and renews a Let's Encrypt certificate for $DOMAIN automatically.
+# WebSockets (Wisp) are proxied without extra configuration.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy nova:8080
+}
