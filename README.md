@@ -81,6 +81,7 @@ Or one-click on **Render** with the included `render.yaml` (New â†’ Blueprint â†
 
 | Platform | What runs there | How |
 |---|---|---|
+| Your own laptop/PC (free) | Frontend + Wisp | [docs/LAPTOP.md](docs/LAPTOP.md): Docker + Tailscale Funnel or Cloudflare Tunnel |
 | Docker / VPS | Frontend + Wisp | `docker compose up -d`, or `deploy/nova.service` (systemd) behind `deploy/Caddyfile` / `deploy/nginx.conf` |
 | Render, Fly.io, Railway | Frontend + Wisp | `render.yaml`, `fly.toml`, or the `Dockerfile` |
 | Vercel, Netlify, Cloudflare Pages | Frontend only | `vercel.json`, `netlify.toml`, `_headers`/`_redirects` |

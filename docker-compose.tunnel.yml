@@ -1,0 +1,33 @@
+# NOVA + Cloudflare Tunnel: a permanent https:// and wss:// address for a home
+# computer, with no port forwarding. Needs a domain on Cloudflare (see docs/LAPTOP.md).
+#
+#   1. Put CLOUDFLARE_TUNNEL_TOKEN=... in .env
+#   2. docker compose -f docker-compose.tunnel.yml up -d
+services:
+  nova:
+    build: .
+    image: nova:latest
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      LOG_LEVEL: info
+    env_file:
+      - path: .env
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+
+  cloudflared:
+    # Official image; cloudflared stays compatible with existing tunnels.
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      nova:
+        condition: service_healthy
