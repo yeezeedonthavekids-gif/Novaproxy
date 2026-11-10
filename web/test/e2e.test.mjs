@@ -83,12 +83,16 @@ describe("NOVA end-to-end", { skip }, () => {
   for (const engine of ["uv", "scramjet"]) {
     test(`${engine}: loads a site, runs scripts, follows links, back, forms`, async () => {
       await page.keyboard.press("Alt+T");
+      // Pin the engine for this test (Auto would otherwise reuse what worked for the site).
       await page.click('button[aria-label="Proxy engine"]');
+      if (await page.$('.popover .menu-item:has-text("Auto") .icon path[d^="M5 12.5"]')) {
+        await page.click('.popover .menu-item:has-text("Auto")'); // menu stays open
+      }
       await page.click(`.popover .menu-item:has-text("${engine === "uv" ? "Ultraviolet" : "Scramjet"}")`);
       await go(`http://127.0.0.1:${sitePort}/`);
       const frame = await activeFrame();
       await frame.waitForSelector('#h[data-api="true"]', { timeout: 25000 });
-      assert.equal(await page.textContent(".engine-pill"), engine === "uv" ? "UV" : "Scramjet");
+      assert.equal(await page.textContent('.engine-toggle button[aria-pressed="true"]'), engine === "uv" ? "UV" : "SJ");
       const src = await page.getAttribute('.view.web[data-active="true"] iframe', "src");
       assert.ok(src.startsWith(engine === "uv" ? "/uv/service/" : "/scram/service/"), src);
       await titleIs("Test Site Home");
@@ -106,7 +110,37 @@ describe("NOVA end-to-end", { skip }, () => {
     });
   }
 
+  test("UV | SJ toggle switches the current page in one click", async () => {
+    await go(`http://127.0.0.1:${sitePort}/`);
+    await titleIs("Test Site Home");
+    const before = await page.textContent('.engine-toggle button[aria-pressed="true"]');
+    const target = before === "UV" ? "SJ" : "UV";
+    await page.click(`.engine-toggle button:has-text("${target}")`);
+    await page.waitForFunction((t) => document.querySelector('.engine-toggle button[aria-pressed="true"]')?.textContent === t, target);
+    await titleIs("Test Site Home");
+    const src = await page.getAttribute('.view.web[data-active="true"] iframe', "src");
+    assert.ok(src.startsWith(target === "UV" ? "/uv/service/" : "/scram/service/"));
+  });
+
+  test("Auto switches engines once when a page fails, without looping", async () => {
+    await page.click('button[aria-label="Proxy engine"]');
+    if (!(await page.$('.popover .menu-item:has-text("Auto") .icon path[d^="M5 12.5"]'))) {
+      await page.click('.popover .menu-item:has-text("Auto")');
+    } else await page.keyboard.press("Escape");
+    await page.keyboard.press("Alt+T");
+    // Nothing listens on this port, so both engines show their error page.
+    await go("http://127.0.0.1:9/");
+    await page.waitForSelector('.toast:has-text("trying")', { timeout: 20000 });
+    await page.waitForTimeout(6000);
+    const toasts = await page.$$eval(".toast", (t) => t.filter((x) => x.textContent.includes("trying")).length);
+    assert.ok(toasts <= 1, "Auto must switch at most once per page");
+    const memory = await page.evaluate(() => JSON.parse(localStorage.getItem("nova:engine-memory") || "{}"));
+    assert.ok(memory["127.0.0.1"], "per-site engine memory is recorded");
+  });
+
   test("favicon is captured through the proxy", async () => {
+    await go(`http://127.0.0.1:${sitePort}/`);
+    await titleIs("Test Site Home");
     await page.waitForFunction(() => document.querySelector(".tab.active .fav img")?.src.startsWith("data:image/png"), null, { timeout: 15000 });
   });
 

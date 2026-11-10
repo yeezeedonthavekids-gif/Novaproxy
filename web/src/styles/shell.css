@@ -139,3 +139,11 @@
 .ghost-text .faint { font-size: 12px; }
 .ghost-foot { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--surface-2); }
 .ghost-foot .hint { flex: 1; }
+
+/* One-click engine switch in the address bar */
+.engine-toggle { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 2px; border-radius: 26px; background: var(--accent-softer); flex: none; }
+.engine-toggle button { height: 22px; padding: 0 9px; border-radius: 22px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: var(--text-2); }
+.engine-toggle button:hover { color: var(--text); }
+.engine-toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.engine-auto { padding: 0 6px 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); }
+@media (max-width: 720px) { .engine-auto { display: none; } }

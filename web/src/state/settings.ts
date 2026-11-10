@@ -66,7 +66,7 @@ export interface Settings {
     quickLinks: QuickLink[];
   };
   search: { engine: string; custom: { id: string; name: string; url: string }[] };
-  proxy: { engine: EngineId; transport: TransportId; wispServers: string[] };
+  proxy: { engine: EngineId; transport: TransportId; wispServers: string[]; autoEngine: boolean };
   privacy: {
     saveHistory: boolean;
     historyDays: number;
@@ -247,7 +247,7 @@ function defaults(): Settings {
       ],
     },
     search: { engine: "duckduckgo", custom: [] },
-    proxy: { engine: "uv", transport: "epoxy", wispServers: [] },
+    proxy: { engine: "uv", transport: "epoxy", wispServers: [], autoEngine: true },
     privacy: { saveHistory: true, historyDays: 30, restoreTabs: true, startPrivate: false, clearSiteDataOnExit: false },
     shortcuts: { ...DEFAULT_SHORTCUTS },
     ghost: {

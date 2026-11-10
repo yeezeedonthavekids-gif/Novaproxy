@@ -11,6 +11,7 @@ import { ENGINES, prepareEngine } from "../proxy/index";
 import { displayUrl, internalPage, isInternal, resolveInput, searchUrl, INTERNAL_PAGES } from "../lib/url";
 import { ACTIONS, focusAddressRequest, ghostOpen, openPage, toggleBookmark } from "../lib/actions";
 import { prettyCombo } from "../lib/keys";
+import { recordPreference } from "../lib/engine-memory";
 import { Icon, type IconName } from "./Icon";
 import { Popover } from "./ui";
 import { BookmarkIcon } from "./BookmarkBar";
@@ -112,6 +113,8 @@ function Omnibox() {
   return (
     <div class="omnibox">
       <div class={`omnibox-field${focused ? " focused" : ""}`} onMouseDown={(e) => {
+        // Clicks on the engine switch must reach its buttons instead of focusing the input.
+        if ((e.target as Element).closest?.(".engine-toggle")) return;
         if (!focused && e.target !== inputRef.current) {
           e.preventDefault();
           inputRef.current?.focus();
@@ -203,17 +206,28 @@ function Omnibox() {
   );
 }
 
+/**
+ * One-click engine switch in the address bar. Picking an engine reloads the page
+ * with it and remembers the choice for that site (used by Auto mode).
+ */
 function EnginePill() {
   const tab = activeTab.value;
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const auto = settings.value.proxy.autoEngine;
+  const pick = (id: EngineId) => {
+    if (id === tab.engine) return;
+    recordPreference(tab.url, id);
+    navigate(tab.id, tab.url, id);
+  };
   return (
-    <>
-      <button class="engine-pill" title="Proxy engine for this tab" onClick={(e) => setAnchor(anchor ? null : (e.currentTarget as HTMLElement))}>
-        <Icon name="bolt" size={12} />
-        <span class="label">{tab.engine === "uv" ? "UV" : "Scramjet"}</span>
+    <div class="engine-toggle" role="group" aria-label="Proxy engine for this site" title={auto ? "Auto picks the engine that works best for each site. Click to choose one yourself." : "Proxy engine for this site"}>
+      {auto && <span class="engine-auto">Auto</span>}
+      <button aria-pressed={tab.engine === "uv"} onClick={() => pick("uv")} title="Ultraviolet">
+        UV
       </button>
-      {anchor && <EngineMenu anchor={anchor} onClose={() => setAnchor(null)} />}
-    </>
+      <button aria-pressed={tab.engine === "scramjet"} onClick={() => pick("scramjet")} title="Scramjet">
+        SJ
+      </button>
+    </div>
   );
 }
 
@@ -227,7 +241,15 @@ function EngineMenu({ anchor, onClose }: { anchor: HTMLElement; onClose: () => v
   };
   return (
     <Popover anchor={anchor} onClose={onClose} width={300}>
-      <div class="menu-label">Proxy engine</div>
+      <button class="menu-item" style={{ height: "auto", padding: "8px 10px", alignItems: "flex-start" }} onClick={() => updateSettings((d) => (d.proxy.autoEngine = !d.proxy.autoEngine))}>
+        <Icon name={s.proxy.autoEngine ? "check" : "sparkle"} />
+        <span>
+          <strong>Auto</strong>
+          <div class="hint">Remembers which engine works best for each site and switches automatically if a page fails or is slow.</div>
+        </span>
+      </button>
+      <div class="menu-sep" />
+      <div class="menu-label">{s.proxy.autoEngine ? "Default for new sites" : "Proxy engine"}</div>
       {(Object.keys(ENGINES) as EngineId[]).map((id) => (
         <button class="menu-item" style={{ height: "auto", padding: "8px 10px", alignItems: "flex-start" }} key={id} onClick={() => pick(id)}>
           <Icon name={(isInternal(tab.url) ? s.proxy.engine : tab.engine) === id ? "check" : "bolt"} />

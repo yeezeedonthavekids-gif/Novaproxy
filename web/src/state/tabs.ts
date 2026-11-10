@@ -3,6 +3,7 @@ import { load, save, uid } from "../lib/storage";
 import { settings, type EngineId } from "./settings";
 import { privateMode } from "./session";
 import { isInternal, internalPage } from "../lib/url";
+import { bestEngine } from "../lib/engine-memory";
 
 export interface TabError {
   kind: "wisp" | "engine" | "load";
@@ -58,13 +59,19 @@ export function titleFor(url: string): string {
   }
 }
 
+/** Engine for a new navigation: an explicit choice, else what worked best for this site (Auto), else the fallback. */
+function chooseEngine(url: string, fallback: EngineId): EngineId {
+  if (isInternal(url) || !settings.peek().proxy.autoEngine) return fallback;
+  return bestEngine(url) ?? fallback;
+}
+
 function makeTab(url: string, engine?: EngineId): Tab {
   return {
     id: uid(),
     url,
     title: titleFor(url),
     favicon: "",
-    engine: engine ?? settings.peek().proxy.engine,
+    engine: engine ?? chooseEngine(url, settings.peek().proxy.engine),
     loading: !isInternal(url),
     error: null,
     // Restored web tabs start discarded so startup never loads every site at once.
@@ -187,7 +194,7 @@ export function navigate(id: string, url: string, engine?: EngineId) {
     title: titleFor(url),
     favicon: isInternal(url) ? "" : t.url === url ? t.favicon : "",
     // A tab showing a NOVA page isn't tied to a site yet, so it follows the current default engine.
-    engine: engine ?? (isInternal(t.url) ? settings.peek().proxy.engine : t.engine),
+    engine: engine ?? chooseEngine(url, isInternal(t.url) ? settings.peek().proxy.engine : t.engine),
     error: null,
     loading: !isInternal(url),
     discarded: false,

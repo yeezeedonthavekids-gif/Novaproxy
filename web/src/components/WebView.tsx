@@ -8,6 +8,8 @@ import { checkWisp, softCheck, wispStatus } from "../proxy/wisp";
 import { attachShortcutsToFrame } from "../lib/shortcuts";
 import { hostOf } from "../lib/url";
 import { ErrorPage } from "./ErrorPage";
+import { toast } from "./ui";
+import { recordFailure, recordSuccess } from "../lib/engine-memory";
 import { Icon } from "./Icon";
 
 const IFRAME_ALLOW = "fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture; gamepad";
@@ -53,6 +55,10 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
   const nav = useRef<{ entries: string[]; index: number; pending: "back" | "forward" | null }>({ entries: [], index: -1, pending: null });
   const observer = useRef<MutationObserver | null>(null);
   const [slow, setSlow] = useState(false);
+  /** When the current page load started (for Auto engine timing). */
+  const loadStart = useRef(0);
+  /** URL we already switched engines for automatically, so Auto never ping-pongs. */
+  const autoSwitchedFor = useRef<string | null>(null);
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
@@ -73,6 +79,7 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
         await prepareEngine(tab.engine);
         if (cancelled || !frame.current) return;
         nav.current.pending = null;
+        loadStart.current = performance.now();
         frame.current.src = ENGINES[tab.engine].encode(tab.url);
       } catch (err) {
         if (cancelled) return;
@@ -85,12 +92,30 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
     };
   }, [tab.navToken, tab.engine, tab.discarded]);
 
-  // Slow-load hint: suggest the other engine instead of leaving the user staring at a spinner.
+  // Slow page: in Auto mode switch to the other engine once; otherwise offer it.
   useEffect(() => {
     if (!tab.loading || tab.error) return;
-    const timer = setTimeout(() => setSlow(true), 15_000);
+    const auto = settings.peek().proxy.autoEngine;
+    const timer = setTimeout(
+      () => {
+        const t = tabRef.current;
+        if (auto && autoSwitchedFor.current !== t.url && wispStatus.peek().state === "online") {
+          autoSwitch(t, "was slow");
+        } else setSlow(true);
+      },
+      auto ? 12_000 : 15_000,
+    );
     return () => clearTimeout(timer);
   }, [tab.loading, tab.navToken, tab.error]);
+
+  /** Retry the page with the other engine and remember that this one struggled with the site. */
+  const autoSwitch = (t: Tab, why: string) => {
+    const other = t.engine === "uv" ? "scramjet" : "uv";
+    recordFailure(t.url, t.engine);
+    autoSwitchedFor.current = t.url;
+    toast(`${hostOf(t.url)} ${why} with ${ENGINES[t.engine].name}, trying ${ENGINES[other].name}`, { icon: "bolt" });
+    navigate(t.id, t.url, other);
+  };
 
   // Toolbar commands.
   useEffect(() => {
@@ -144,6 +169,19 @@ export function WebView({ tab, active }: { tab: Tab; active: boolean }) {
       if (fromLoad && /^https?:/.test(href) && !href.startsWith(location.origin)) navigate(current.id, href);
       return;
     }
+    // The engine couldn't load the site and showed its own error page.
+    const engineError = !!doc.getElementById("errorTrace") && !!(doc.getElementById("uvHostname") || doc.getElementById("fetchedURL"));
+    if (fromLoad && engineError && wispStatus.peek().state === "online") {
+      if (settings.peek().proxy.autoEngine && autoSwitchedFor.current !== real) {
+        autoSwitch({ ...current, url: real }, "didn't load");
+        return;
+      }
+      recordFailure(real, current.engine);
+    } else if (fromLoad && !engineError && loadStart.current) {
+      recordSuccess(real, current.engine, performance.now() - loadStart.current);
+      loadStart.current = 0;
+    }
+
     const title = (doc.title || "").trim() || hostOf(real) || real;
     const patch: Partial<Tab> = { url: real, title };
 

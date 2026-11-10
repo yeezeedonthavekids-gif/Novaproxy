@@ -23,6 +23,7 @@ import { normalizeWispUrl, defaultWispUrl } from "../proxy/runtime-config";
 import { probeWisp, wispStatus, checkWisp, wispLabel } from "../proxy/wisp";
 import { ENGINES } from "../proxy/index";
 import { openPage, settingsSection } from "../lib/actions";
+import { engineMemorySize, forgetEngineMemory } from "../lib/engine-memory";
 import { Icon, type IconName } from "../components/Icon";
 import { Section, SettingRow, Switch, Segmented, toast, askForm, confirmAction, downloadText, pickFile, imageToIcon } from "../components/ui";
 import { ShortcutEditor, ShortcutList } from "./Shortcuts";
@@ -395,7 +396,18 @@ function ProxySettings() {
 
   return (
     <>
-      <Section title="Default engine" desc="Each tab remembers its engine. If a site misbehaves, switch the tab to the other engine from the address bar.">
+      <Section title="Engine" desc="Both engines use the same connection; they differ in how well they handle each site.">
+        <SettingRow
+          title="Choose automatically (Auto)"
+          desc={`Remembers which engine loads each site best and switches by itself if a page fails or is slow. Learned ${engineMemorySize()} site${engineMemorySize() === 1 ? "" : "s"} so far, stored only on this device.`}
+        >
+          <Switch label="Auto engine" checked={s.proxy.autoEngine} onChange={(v) => updateSettings((d) => (d.proxy.autoEngine = v))} />
+          <button class="btn sm ghost" onClick={() => (forgetEngineMemory(), toast("Forgot learned engine choices"))}>
+            Reset
+          </button>
+        </SettingRow>
+      </Section>
+      <Section title={s.proxy.autoEngine ? "Default for new sites" : "Default engine"} desc="Switch any page with the UV | SJ buttons in the address bar.">
         {(Object.values(ENGINES)).map((e) => (
           <SettingRow key={e.id} title={e.name} desc={e.description}>
             <button class={`btn sm${s.proxy.engine === e.id ? " primary" : ""}`} onClick={() => updateSettings((d) => (d.proxy.engine = e.id))}>
