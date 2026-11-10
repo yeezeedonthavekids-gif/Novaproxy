@@ -16,9 +16,22 @@ DIR="/opt/nova"
 say() { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
 [ "$(id -u)" -eq 0 ] || { echo "Please run with sudo."; exit 1; }
 
-say "Installing Docker and git"
-apt-get update -y -qq
-apt-get install -y -qq git curl ca-certificates iptables-persistent >/dev/null 2>&1 || apt-get install -y -qq git curl ca-certificates
+# Never stop to ask questions (iptables-persistent otherwise waits on a hidden prompt).
+export DEBIAN_FRONTEND=noninteractive
+echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
+echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
+
+say "Installing Docker and git (this can take a few minutes)"
+dpkg --configure -a || true
+# Fresh servers often run automatic updates at first boot; wait for them instead of failing.
+for _ in $(seq 1 60); do
+  fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break
+  echo "  waiting for the server's automatic updates to finish..."
+  sleep 5
+done
+apt-get update -y
+apt-get install -y -o Dpkg::Options::=--force-confold git curl ca-certificates iptables-persistent \
+  || apt-get install -y git curl ca-certificates
 if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | sh
 fi
