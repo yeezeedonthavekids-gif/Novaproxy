@@ -20,24 +20,22 @@ say() { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
 export DEBIAN_FRONTEND=noninteractive
 
 # Fresh servers run automatic updates at first boot and hold the package lock.
-# Wait for them (up to 20 minutes) instead of failing.
-say "Checking for the server's automatic updates"
-for _ in $(seq 1 240); do
-  if pgrep -f "unattended-upgrade|apt.systemd.daily" >/dev/null || pgrep -x apt-get >/dev/null || pgrep -x dpkg >/dev/null; then
-    echo "  waiting for automatic updates to finish (this is normal on a new server)..."
-    sleep 5
-  else
+# apt's own lock timeout waits for exactly that lock (and nothing else).
+APT="apt-get -o DPkg::Lock::Timeout=1800"
+
+say "Installing Docker and git (if the server is still updating itself, this waits for it)"
+for _ in $(seq 1 360); do
+  # debconf has its own lock; retry while a background update holds it.
+  if { echo "iptables-persistent iptables-persistent/autosave_v4 boolean true"
+       echo "iptables-persistent iptables-persistent/autosave_v6 boolean true"; } | debconf-set-selections 2>/dev/null; then
     break
   fi
+  echo "  the server is still installing its own updates, waiting..."
+  sleep 5
 done
-
-say "Installing Docker and git (this can take a few minutes)"
-dpkg --configure -a || true
-echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections
-echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections
-apt-get update -y
-apt-get install -y -o Dpkg::Options::=--force-confold git curl ca-certificates iptables-persistent \
-  || apt-get install -y git curl ca-certificates
+$APT update -y
+$APT install -y -o Dpkg::Options::=--force-confold git curl ca-certificates iptables-persistent \
+  || $APT install -y git curl ca-certificates
 if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | sh
 fi
