@@ -93,13 +93,13 @@ export function probeWisp(url: string, timeoutMs = 8000): Promise<ProbeResult> {
   });
 }
 
-/** The relay built into this deployment (shown as "Built-in relay", never by address). */
+/** The relay built into this deployment (shown as "Default", never by address). */
 export const builtInWispUrl = signal("");
 
 /** What the UI shows for a Wisp server: the deployment's own relay is never displayed by address. */
 export function wispLabel(url: string): string {
   if (!url) return "—";
-  if (url === builtInWispUrl.value) return "Built-in relay";
+  if (url === builtInWispUrl.value) return "Default";
   try {
     return new URL(url).host;
   } catch {
@@ -107,11 +107,15 @@ export function wispLabel(url: string): string {
   }
 }
 
+/** Servers in the order NOVA should try them: the selected one first, then (with failover) the rest. */
 async function candidates(): Promise<string[]> {
-  const custom = settings.peek().proxy.wispServers.map(normalizeWispUrl).filter(Boolean);
+  const p = settings.peek().proxy;
   const fallback = await defaultWispUrl();
   if (builtInWispUrl.peek() !== fallback) builtInWispUrl.value = fallback;
-  return [...new Set(custom.length ? custom : [fallback])];
+  const all = [...new Set([fallback, ...p.wispServers.map(normalizeWispUrl).filter(Boolean)])];
+  const wanted = p.wispSelected === "default" ? fallback : normalizeWispUrl(p.wispSelected);
+  const first = all.includes(wanted) ? wanted : fallback;
+  return p.wispFailover ? [first, ...all.filter((u) => u !== first)] : [first];
 }
 
 const listeners = new Set<(url: string) => void>();
@@ -158,7 +162,7 @@ export function checkWisp(): Promise<WispStatus> {
     }
     // Nothing configured and the guessed same-origin server doesn't exist: say so plainly
     // instead of retrying forever against a static host.
-    if (!settings.peek().proxy.wispServers.length && (await wispIsSameOriginGuess()) && !(await sameOriginHasWispServer())) {
+    if (list.length === 1 && list[0] === builtInWispUrl.peek() && (await wispIsSameOriginGuess()) && !(await sameOriginHasWispServer())) {
       return setOffline(list, NOT_CONFIGURED_MESSAGE, true);
     }
     return setOffline(list, errors.join(" · "));
@@ -221,7 +225,8 @@ export function startWispMonitor() {
   // Re-check when the configured servers change.
   let first = true;
   effect(() => {
-    void settings.value.proxy.wispServers.join("|");
+    const p = settings.value.proxy;
+    void [p.wispServers.join("|"), p.wispSelected, p.wispFailover];
     if (first) {
       first = false;
       return;

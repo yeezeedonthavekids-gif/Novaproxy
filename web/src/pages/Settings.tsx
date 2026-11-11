@@ -19,8 +19,9 @@ import {
 import { mediaStore } from "../lib/idb";
 import { uid } from "../lib/storage";
 import { safeHttpUrl } from "../lib/url";
-import { normalizeWispUrl, defaultWispUrl } from "../proxy/runtime-config";
-import { probeWisp, wispStatus, checkWisp, wispLabel } from "../proxy/wisp";
+import { normalizeWispUrl } from "../proxy/runtime-config";
+import { probeWisp, wispStatus, checkWisp, wispLabel, builtInWispUrl } from "../proxy/wisp";
+import { ServerPicker } from "../components/ServerPicker";
 import { ENGINES } from "../proxy/index";
 import { openPage, settingsSection } from "../lib/actions";
 import { engineMemorySize, forgetEngineMemory } from "../lib/engine-memory";
@@ -373,23 +374,22 @@ function Performance() {
 function ProxySettings() {
   const s = settings.value;
   const st = wispStatus.value;
-  const [fallback, setFallback] = useState("");
   const [input, setInput] = useState("");
-  const [testing, setTesting] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
-  useEffect(() => void defaultWispUrl().then(setFallback), []);
 
   const test = async (url: string) => {
-    setTesting(url);
+    setResults((x) => ({ ...x, [url]: "Testing…" }));
     const r = await probeWisp(url);
     setResults((x) => ({ ...x, [url]: r.ok ? `✓ Wisp handshake OK · ${r.latency} ms` : `✗ ${r.error}` }));
-    setTesting(null);
   };
   const add = async () => {
     const url = normalizeWispUrl(input);
     if (!/^wss?:\/\//.test(url)) return toast("Enter a ws:// or wss:// address", { icon: "alert" });
-    if (s.proxy.wispServers.includes(url)) return toast("That server is already in the list", { icon: "info" });
-    updateSettings((d) => d.proxy.wispServers.push(url));
+    if (s.proxy.wispServers.includes(url) || url === builtInWispUrl.peek()) return toast("That server is already in the list", { icon: "info" });
+    updateSettings((d) => {
+      d.proxy.wispServers.push(url);
+      d.proxy.wispSelected = url; // switch to the server you just added
+    });
     setInput("");
     void test(url);
   };
@@ -428,8 +428,8 @@ function ProxySettings() {
         </SettingRow>
       </Section>
       <Section
-        title="Wisp servers"
-        desc="NOVA uses the first reachable server in this list and fails over automatically. Leave the list empty to use the deployment default."
+        title="Wisp server"
+        desc="Choose which server relays your browsing. Default is provided by this site; add your own to switch between them."
         actions={
           <button class="btn sm" onClick={() => void checkWisp()}>
             <Icon name="reload" size={14} /> Re-check
@@ -445,43 +445,11 @@ function ProxySettings() {
             </span>
           </div>
         )}
-        <div class="list-row">
-          <span class={`dot ${st.state}`} />
-          <span class="list-row-label">
-            <strong>{st.state === "online" ? "Connected" : st.state === "offline" ? "Unreachable" : st.state === "checking" ? "Checking…" : "Idle"}</strong>
-            <span class="faint" style={{ marginLeft: 8 }}>{wispLabel(st.url)}</span>
-          </span>
-          {st.latency != null && <span class="badge ok">{st.latency} ms</span>}
-        </div>
-        {s.proxy.wispServers.length === 0 && (
-          <div class="list-row">
-            <Icon name="cloud" size={16} />
-            <span class="list-row-label">
-              Built-in relay <span class="faint">(provided by this site)</span>
-            </span>
-            <button class="btn sm" disabled={testing === fallback} onClick={() => void test(fallback)}>
-              Test
-            </button>
-          </div>
-        )}
-        {s.proxy.wispServers.map((url, i) => (
-          <div class="list-row" key={url}>
-            <span class="badge">{i + 1}</span>
-            <span class="list-row-label mono">{url}</span>
-            <button class="btn sm" disabled={testing === url} onClick={() => void test(url)}>
-              {testing === url ? "Testing…" : "Test"}
-            </button>
-            <button class="icon-btn sm" aria-label="Move up" disabled={i === 0} onClick={() => updateSettings((d) => move(d.proxy.wispServers, i, i - 1))}>
-              <Icon name="chevronDown" size={14} class="flip" />
-            </button>
-            <button class="icon-btn sm" aria-label={`Remove ${url}`} onClick={() => updateSettings((d) => d.proxy.wispServers.splice(i, 1))}>
-              <Icon name="trash" size={14} />
-            </button>
-          </div>
-        ))}
+        <ServerPicker onTest={(url) => void test(url)} />
+        {st.state === "offline" && <div class="list-row error-text" style={{ whiteSpace: "normal" }}>{st.error}</div>}
         {Object.entries(results).map(([url, r]) => (
           <div class="list-row hint" key={url}>
-            <span class="mono">{wispLabel(url)}</span> <span class={r.startsWith("✓") ? "" : "error-text"}>{r}</span>
+            <span>{wispLabel(url)}</span> <span class={r.startsWith("✓") ? "" : "error-text"}>{r}</span>
           </div>
         ))}
         <form
@@ -496,6 +464,9 @@ function ProxySettings() {
             Add server
           </button>
         </form>
+        <SettingRow title="Fail over automatically" desc="If the selected server is down, NOVA uses another one from this list until it's back.">
+          <Switch label="Fail over automatically" checked={s.proxy.wispFailover} onChange={(v) => updateSettings((d) => (d.proxy.wispFailover = v))} />
+        </SettingRow>
       </Section>
     </>
   );

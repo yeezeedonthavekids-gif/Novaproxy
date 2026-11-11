@@ -66,7 +66,17 @@ export interface Settings {
     quickLinks: QuickLink[];
   };
   search: { engine: string; custom: { id: string; name: string; url: string }[] };
-  proxy: { engine: EngineId; transport: TransportId; wispServers: string[]; autoEngine: boolean };
+  proxy: {
+    engine: EngineId;
+    transport: TransportId;
+    /** Extra Wisp servers the user added. The site's own default is always available too. */
+    wispServers: string[];
+    /** "default" or one of wispServers. */
+    wispSelected: string;
+    /** If the selected server is down, try the others. */
+    wispFailover: boolean;
+    autoEngine: boolean;
+  };
   privacy: {
     saveHistory: boolean;
     historyDays: number;
@@ -247,7 +257,7 @@ function defaults(): Settings {
       ],
     },
     search: { engine: "duckduckgo", custom: [] },
-    proxy: { engine: "uv", transport: "epoxy", wispServers: [], autoEngine: true },
+    proxy: { engine: "uv", transport: "epoxy", wispServers: [], wispSelected: "default", wispFailover: true, autoEngine: true },
     privacy: { saveHistory: true, historyDays: 30, restoreTabs: true, startPrivate: false, clearSiteDataOnExit: false },
     shortcuts: { ...DEFAULT_SHORTCUTS },
     ghost: {

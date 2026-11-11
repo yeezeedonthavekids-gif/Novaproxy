@@ -57,6 +57,8 @@ describe("NOVA end-to-end", { skip }, () => {
       if (url.endsWith("/fixture.html")) return route.fulfill({ body: GAME_HTML, contentType: "text/plain", headers: { "access-control-allow-origin": "*" } });
       return route.fulfill({ status: 404, body: "" });
     });
+    // The repo's nova.config.json points at the production Wisp server; tests use the local one.
+    await ctx.route("**/nova.config.json", (route) => route.fulfill({ json: { wispUrl: "" } }));
     page = await ctx.newPage();
     await page.goto(base);
     await page.waitForSelector(".omnibox");
@@ -232,19 +234,29 @@ describe("NOVA end-to-end", { skip }, () => {
     await page.waitForSelector('.g-name:has-text("Fixture Game")');
   });
 
-  test("Wisp outage shows NOVA's error page and recovery works", async () => {
+  test("Wisp servers: switch, fail over, outage page, recovery", async () => {
     await go("nova://settings");
     await page.click('.settings-nav-item:has-text("Proxy")');
+    await page.waitForSelector('.server-option:has-text("Default")');
+    // Adding a server selects it. It's dead, so failover keeps NOVA on Default.
     await page.fill('input[aria-label="Add Wisp server"]', "ws://127.0.0.1:1/wisp/");
     await page.click('button:has-text("Add server")');
+    await page.waitForSelector('.server-option.selected:has-text("127.0.0.1:1")');
+    await page.waitForSelector(".status-btn .dot.online", { timeout: 20000 });
+    // Without failover the dead server is used, and NOVA shows its outage page.
+    await page.click('button[role="switch"][aria-label="Fail over automatically"]');
     await page.keyboard.press("Alt+T");
     await go(`http://127.0.0.1:${sitePort}/`);
-    await page.waitForSelector(".error-page h1:has-text(\"Wisp\")", { timeout: 20000 });
-    // Remove the dead server: NOVA falls back to the deployment default and the page loads on retry.
+    await page.waitForSelector('.error-page h1:has-text("Wisp")', { timeout: 20000 });
+    // Switch back to Default from the toolbar: the failed tab reloads on its own.
+    await page.click(".status-btn");
+    await page.click('.popover .server-option:has-text("Default") .server-main');
+    await titleIs("Test Site Home");
+    // Clean up.
     await page.keyboard.press("Alt+,");
     await page.click('.settings-nav-item:has-text("Proxy")');
-    await page.click('button[aria-label="Remove ws://127.0.0.1:1/wisp/"]');
-    await page.waitForSelector(".status-btn .dot.online", { timeout: 15000 });
+    await page.click('button[aria-label="Remove 127.0.0.1:1"]');
+    await page.click('button[role="switch"][aria-label="Fail over automatically"]');
   });
 
   test("private session records no history", async () => {
